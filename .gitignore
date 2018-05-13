@@ -1,0 +1,12 @@
+all-the-news/
+bilm.egg-info/
+dist/
+build/
+
+*.hdf5
+*.txt
+*.npy
+*.pyc
+*.swp
+
+
