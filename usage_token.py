@@ -8,22 +8,16 @@ import pickle
 def make_set(data):
     all_words = []
     for line in data:
-        print(line)
         all_words.extend(' '.join(line).split())
     all_tokens = set(['<S>', '</S>'] + all_words)
     return all_tokens
 
 def pickle2tuple(nr):
         [heads, desc, _] = pickle.load(open('pickles/all-the-news_'+nr+'.pickle', 'rb'))
-        print(len(heads))
-        print(len(desc))
-        print(type(heads), type(desc))
         return heads + desc
 
 data = pickle2tuple('5000')
-print(len(data))
 all_tokens = make_set(data)
-print(len(all_tokens))
 
 vocab_file = 'vocab_all_news.txt'
 with open(vocab_file, 'w') as fout:
