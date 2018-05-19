@@ -1,48 +1,56 @@
-'''
-ELMo usage example with pre-computed and cached context independent
-token representations
-
-Below, we show usage for SQuAD where each input example consists of both
-a question and a paragraph of context.
-'''
-
 import tensorflow as tf
 import os
 from bilm import TokenBatcher, BidirectionalLanguageModel, weight_layers, \
     dump_token_embeddings
+import numpy as np
+import pickle
 
-# Our small dataset.
-raw_context = [
-    'Pretrained biLMs compute representations useful for NLP tasks .',
-    'They give state of the art performance for many tasks .'
-]
-tokenized_context = [sentence.split() for sentence in raw_context]
-tokenized_question = [
-    ['What', 'are', 'biLMs', 'useful', 'for', '?'],
-]
+def make_set(data):
+    all_words = []
+    for line in data:
+        all_words.extend(' '.join(line).split())
+    all_tokens = set(['<S>', '</S>'] + all_words)
+    return all_tokens
 
-# Create the vocabulary file with all unique tokens and
-# the special <S>, </S> tokens (case sensitive).
-all_tokens = set(['<S>', '</S>'] + tokenized_question[0])
-for context_sentence in tokenized_context:
-    for token in context_sentence:
-        all_tokens.add(token)
-vocab_file = 'vocab_small.txt'
+def pickle2tuple(nr):
+        [heads, desc, _] = pickle.load(open('pickles/all-the-news_'+nr+'.pickle', 'rb'))
+        return heads + desc
+
+def tokenized(data):
+    tokenized_sentences = []
+    for article in data:
+        for line in article:
+            tokenized_sentences.append(line.split())
+    return tokenized_sentences
+
+data = pickle2tuple('5000')
+all_tokens = make_set(data)
+tokenized_sentences = tokenized(data)
+
+vocab_file = 'vocab_all_news.txt'
 with open(vocab_file, 'w') as fout:
     fout.write('\n'.join(all_tokens))
 
 # Location of pretrained LM.  Here we use the test fixtures.
-datadir = os.path.join('tests', 'fixtures', 'model')
-options_file = os.path.join(datadir, 'options.json')
-weight_file = os.path.join(datadir, 'lm_weights.hdf5')
-
+options_file = './options.json'
+weight_file = './weights.hdf5'
 # Dump the token embeddings to a file. Run this once for your dataset.
 token_embedding_file = 'elmo_token_embeddings.hdf5'
-dump_token_embeddings(
-    vocab_file, options_file, weight_file, token_embedding_file
-)
-tf.reset_default_graph()
+tokens, embeddings = dump_token_embeddings(vocab_file, options_file, weight_file, token_embedding_file)
 
+np.save('elmo_embeddings', embeddings)
+np.save('tokens', tokens)
+
+# embeddings = np.load('elmo_embeddings.npy')
+# tokens = np.load('tokens.npy')
+
+with open("elmo_all_news.txt", 'w') as f:
+    for i in range(len(tokens)):
+        f.write(tokens[i].decode('utf-8')+' ')
+        f.write(' '.join(["%.8f" % e for e in embeddings[i, :]]))
+        f.write('\n')     
+
+tf.reset_default_graph()
 
 
 ## Now we can do inference.
@@ -77,7 +85,7 @@ with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
 
     # Create batches of data.
-    context_ids = batcher.batch_sentences(tokenized_context)
+    context_ids = batcher.batch_sentences(tokenized_sentences)
     
     # Compute ELMo representations (here for the input only, for simplicity).
     elmo_context_input_ = sess.run(
@@ -85,4 +93,6 @@ with tf.Session() as sess:
         feed_dict={context_token_ids: context_ids}
     )
     print(elmo_context_input_[0])
+
+
 
