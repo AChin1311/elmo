@@ -8,26 +8,39 @@ import pickle
 def make_set(data):
     all_words = []
     for line in data:
-        all_words.extend(' '.join(line).split())
-    all_tokens = set(['<S>', '</S>'] + all_words)
+        all_words.extend(line.split())
+    all_tokens = set(all_words+['<S>', '</S>'])
     return all_tokens
 
 def pickle2tuple(nr):
-        [heads, desc, _] = pickle.load(open('pickles/all-the-news_'+nr+'.pickle', 'rb'))
-        return heads + desc
+    print("loading ", 'pickles/all-the-news_'+nr+'.pickle')
+    [heads, desc, _] = pickle.load(open('pickles/all-the-news_'+nr+'.pickle', 'rb'))
+    print(len(heads), " news loaded!")
+
+    # return heads + desc
+    articles = []
+
+    for h, d in zip(heads, desc):
+        article = ""
+        article += h[0]
+        for l in d:
+            article += l
+        articles.append(article)
+    print(len(articles))
+    return articles
 
 def tokenized(data):
     tokenized_sentences = []
     for article in data:
-        for line in article:
-            tokenized_sentences.append(line.split())
+        tokenized_sentences.append(article.split())
+    print(tokenized_sentences[0])
     return tokenized_sentences
 
-data = pickle2tuple('5000')
+data = pickle2tuple('50')
 all_tokens = make_set(data)
 tokenized_sentences = tokenized(data)
 
-vocab_file = 'vocab_all_news.txt'
+vocab_file = 'vocab_small.txt'
 with open(vocab_file, 'w') as fout:
     fout.write('\n'.join(all_tokens))
 
@@ -44,11 +57,11 @@ np.save('tokens', tokens)
 # embeddings = np.load('elmo_embeddings.npy')
 # tokens = np.load('tokens.npy')
 
-with open("elmo_all_news.txt", 'w') as f:
-    for i in range(len(tokens)):
-        f.write(tokens[i].decode('utf-8')+' ')
-        f.write(' '.join(["%.8f" % e for e in embeddings[i, :]]))
-        f.write('\n')     
+# with open("elmo_all_news.txt", 'w') as f:
+#     for i in range(len(tokens)):
+#         f.write(tokens[i].decode('utf-8')+' ')
+#         f.write(' '.join(["%.8f" % e for e in embeddings[i, :]]))
+#         f.write('\n')     
 
 tf.reset_default_graph()
 
@@ -92,7 +105,9 @@ with tf.Session() as sess:
         [elmo_context_input['weighted_op']],
         feed_dict={context_token_ids: context_ids}
     )
-    print(elmo_context_input_[0])
-
-
+    print(len(elmo_context_input_)) 
+    print(len(elmo_context_input_[0]))
+    print(len(elmo_context_input_[0][0]))
+    print(len(elmo_context_input_[0][0][0]))
+    
 
