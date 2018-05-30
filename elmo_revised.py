@@ -1,5 +1,6 @@
 from __future__ import print_function
-from allennlp.modules.elmo import _ElmoBiLm
+# from allennlp.modules.elmo import _ElmoBiLm
+from allennlp.modules.elmo import Elmo, batch_to_ids
 import torch.nn as nn
 import torch
 from torch import FloatTensor,LongTensor,ByteTensor, Tensor
@@ -13,22 +14,30 @@ import argparse
 import pickle
 from allennlp.modules.elmo import Elmo
 #from nn_layer import EmbeddingLayer, Encoder
+from allennlp.commands.elmo import ElmoEmbedder
 
-
-def get_sentences(nr="50"):
+def get_sentences(nr="5000"):
     print("loading ", 'pickles/all-the-news_'+nr+'.pickle')
     [heads, desc, _] = pickle.load(open('pickles/all-the-news_'+nr+'.pickle', 'rb'))
     print(len(heads), " news loaded!")
     
-    articles = []
+    sentences = []
     for h, d in zip(heads, desc):
-        art = ""
-        art += h[0]
-        for l in d:
-            art += l
-        articles.append(art)
-    print(len(articles))
-    return articles
+      sentences.append(h[0])
+      for l in d:
+        sentences.append(l)
+    print(len(sentences))
+    print(sentences[0])
+    return sentences
+    # articles = []
+    # for h, d in zip(heads, desc):
+    #     art = ""
+    #     art += h[0]
+    #     for l in d:
+    #         art += l
+    #     articles.append(art)
+    # print(len(articles))
+    # return articles
 
 def elmo_sent_mapper(sentence, max_length, pad_token="~"):
     word_list = []
@@ -47,8 +56,9 @@ def get_batches(data, batch_size):
     return batched_data
 
 def batch_sentence_mapper(batch, maxl):
-    return Variable(LongTensor([elmo_sent_mapper(sent,maxl) for sent in batch]))
-    
+    # return Variable(LongTensor([elmo_sent_mapper(sent,maxl) for sent in batch]))
+    return batch_to_ids(batch)
+
 def store_batch_embeddings(sl,emb_red,num_rec,batch_size, max_sent_len):
     num_sent = len(sl)
     emb_red = emb_red.data.numpy()
@@ -61,7 +71,7 @@ def store_batch_embeddings(sl,emb_red,num_rec,batch_size, max_sent_len):
                 fil.write('{0} {1}\n'.format(sl[i][j],' '.join(map(str,word_embedding))))
                 count+=1
     return count
-    
+
 def get_elmo_embeddings(sl, num_rec, batch_size, dim):
     if os.path.exists(embedding_file):
         print(embedding_file," already exists. Do you still want to proceed?")
@@ -70,7 +80,7 @@ def get_elmo_embeddings(sl, num_rec, batch_size, dim):
             print("Continuing..")
         else:
             return
-    elmo_embedder = Elmo('options.json', 'weights.hdf5',num_output_representations=1, requires_grad=False)
+    elmo_embedder = Elmo('options.json', 'weights.hdf5', 1)
     if use_cuda and do_dot_cuda:
         print("\tRunning elmo.cuda")
         elmo_embedder.cuda()
@@ -85,7 +95,11 @@ def get_elmo_embeddings(sl, num_rec, batch_size, dim):
         emb_red = act[0]
         if use_cuda and do_dot_cuda:
             emb_red = emb_red.cpu()
-        cnt = store_batch_embeddings(batch, emb_red,num_rec,batch_size, max_sent_len)
+        # embed_tensors = elmo_embedder.batch_to_embeddings(batch)
+        # print(len(embed_tensors))
+        # print(len(embed_tensors[0]))
+        
+        cnt = store_batch_embeddings(batch, emb_red, num_rec,batch_size, max_sent_len)
         bno+=1
         wc +=cnt
         print("\t\tStored batch {0} [with {1} words]".format(bno,cnt))
@@ -104,7 +118,7 @@ if __name__ == "__main__":
 
   parser = argparse.ArgumentParser()
   parser.add_argument("-n", "--n_rec",type=int, default = 10000,help="Number of records")
-  parser.add_argument("-d", "--dimension", type=int, default=300,help= "Target dimension of embeddings")
+  parser.add_argument("-d", "--dimension", type=int, default=1024,help= "Target dimension of embeddings")
   parser.add_argument("-b", "--batchsize", type=int, default=100,
                       help="batch size of sentences to store")
   parser.add_argument("-i", "--do_dot_cuda", type=int, default=0,
@@ -141,7 +155,6 @@ if __name__ == "__main__":
 
   sent_list=get_sentences()
   split_sent_list = [[w.lower() for w in s.split()] for s in sent_list]
-
   print('Splitting sentence lists and converting to lower case words')
 
   lengths=[len(s) for s in split_sent_list]
