@@ -24,7 +24,7 @@ def get_sentences(nr):
     sentences = []
     for h, d in zip(heads, desc):
       sentences.append(h[0])
-      for l in d:
+      for l in d[:5]:
         sentences.append(l)
     print(len(sentences), " sentences is loaded.")
     return sentences
@@ -88,7 +88,7 @@ def get_elmo_embeddings(sl, num_rec, batch_size):
     return 
 
 if __name__ == "__main__":
-  num_records = 50
+  num_records = 5000
   batch_size = 100
 
   print(" *********** Generating 1024 dimension embeddings for {0} news articles with batch size {1} *************".format(num_records,batch_size))
