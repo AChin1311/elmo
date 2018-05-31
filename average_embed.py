@@ -46,34 +46,36 @@ if __name__ == "__main__":
   embed_dict = {}
   word_cnt_dict = {}
 
-  words = []
   bno = 0
   with open("new-elmo_embed_nr-5000_bsiz-100.txt", 'r') as f:
     data = []
     for line in f:
       data.append(line.split())
-      if data[0] not in words:
-        words.append(data[0])
       if len(data) == batch_size:
         bno += 1
+        if bno % 10 == 0:
+          print("Processing batch ", bno)
         embed_dict, word_cnt_dict = accumulate_emb(data, embed_dict, word_cnt_dict)
         data = []
-  
   f.close()
+  print("Done reading file")
   embed_dict = average(embed_dict, word_cnt_dict)
+  print("Done averaging embeddings")
   save_emb_to_file(embed_dict, "elmo_embedding_news5000.txt")
-  print(len(words))
-  print(len(word_cnt_dict))
-  print(len(embed_dict))
-
-  print("SVD")
+  print("Done saving embeddings to file")
+  print("vocab size: ", len(word_cnt_dict))
+  
+  print("Doing SVD")
   X = []
   for w in embed_dict:
     X.append(embed_dict[w])
 
-  svd = TruncatedSVD(n_components=300, n_iter=10, random_state=42)
-  X = svd.fit_transform(X) 
+  svd = TruncatedSVD(n_components=300, n_iter=100, random_state=42)
+  X = svd.fit_transform(X)
+  print("Done dimension reduction") 
+  
   reduce_dict = {}
   for emb, w in zip(X, embed_dict):
     reduce_dict[w] = emb 
   save_emb_to_file(reduce_dict, "elmo_300.txt")
+  print("Reduced embeddings saved to file")
